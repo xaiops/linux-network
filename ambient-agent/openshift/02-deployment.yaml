@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ambient-agent
+  labels:
+    app: ambient-agent
+    component: security-monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ambient-agent
+  template:
+    metadata:
+      labels:
+        app: ambient-agent
+        component: security-monitoring
+    spec:
+      containers:
+      - name: agent
+        image: quay.io/YOUR_ORG/ambient-agent:latest  # Update this!
+        imagePullPolicy: Always
+        
+        # Mount config from ConfigMap
+        volumeMounts:
+        - name: config
+          mountPath: /opt/app-root/src/ambient-agent/config.yaml
+          subPath: config.yaml
+        - name: logs
+          mountPath: /opt/app-root/src/ambient-agent/logs
+        
+        # Resource limits
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        
+        # Liveness probe
+        livenessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import sys; sys.exit(0)"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        
+        # Readiness probe
+        readinessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import sys; sys.exit(0)"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Environment variables
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: MCP_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: ambient-agent-config
+              key: mcp.endpoint
+              optional: true
+      
+      volumes:
+      - name: config
+        configMap:
+          name: ambient-agent-config
+      - name: logs
+        emptyDir: {}  # For testing; use PVC for production
+      
+      # Restart policy
+      restartPolicy: Always
+

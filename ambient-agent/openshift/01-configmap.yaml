@@ -1,0 +1,135 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ambient-agent-config
+  labels:
+    app: ambient-agent
+data:
+  config.yaml: |
+    mcp:
+      endpoint: "http://linux-mcp-server:8000/mcp"
+      
+    target:
+      host: "bastion.r42dl.sandbox5417.opentlc.com"
+      username: "student"
+
+    agent:
+      monitoring_interval: 300  # 5 minutes
+      analysis_window: 10       # Last 10 minutes
+      critical_threshold: "HIGH"
+      
+    thresholds:
+      high_connection_rate: 50
+      port_scan_threshold: 10
+      
+    alerts:
+      enabled: true
+      log_file: "/opt/app-root/src/ambient-agent/logs/alerts.log"
+
+    # LlamaStack OpenAI-compatible endpoint with Scout model
+    llm:
+      provider: "openai"
+      base_url: "https://lss-lss.apps.prod.rhoai.rh-aiservices-bu.com/v1/openai/v1"
+      model: "llama-4-scout-17b-16e-w4a16"
+      api_key: "not-needed"
+      temperature: 0.1
+      max_tokens: 2000
+
+    # LLM Prompts - all configurable
+    prompts:
+      anomaly_analysis:
+        system: |
+          You are a cybersecurity expert analyzing network traffic anomalies on a RHEL server.
+          
+          Your task:
+          1. Assess the severity of each anomaly (LOW, MEDIUM, HIGH, CRITICAL)
+          2. Identify likely attack vectors or explanations
+          3. Recommend specific actions to take
+          4. Determine if immediate alerting is needed
+          
+          Be concise but thorough. Focus on actionable insights.
+        
+        user_template: |
+          Analyze these network anomalies detected on a RHEL server:
+          
+          {anomalies_text}
+          
+          Provide your analysis in this format:
+          - Overall Severity: [LOW/MEDIUM/HIGH/CRITICAL]
+          - Threat Assessment: [your analysis]
+          - Likely Cause: [explanation]
+          - Recommended Actions: [numbered list]
+          - Alert Required: [YES/NO]
+      
+      process_investigation:
+        system: |
+          You are a security analyst investigating suspicious network behavior from a specific process.
+          
+          Review the process details and network activity. Determine:
+          1. Is this behavior normal or suspicious?
+          2. What is the risk level?
+          3. Should this process be whitelisted or blocked?
+          4. What additional investigation is needed?
+        
+        user_template: |
+          Investigate this process:
+          
+          {process_details}
+          
+          Network behavior:
+          {network_behavior}
+          
+          Provide your assessment:
+          - Risk Level: [LOW/MEDIUM/HIGH/CRITICAL]
+          - Verdict: [NORMAL/SUSPICIOUS/MALICIOUS]
+          - Explanation: [why]
+          - Actions: [what to do]
+      
+      baseline_learning:
+        system: |
+          You are analyzing network patterns to build a baseline of normal behavior.
+          
+          Review the current network activity and existing baseline.
+          Identify:
+          1. Which processes should be whitelisted as normal
+          2. Which behaviors are expected
+          3. What thresholds should be adjusted
+        
+        user_template: |
+          Current network activity:
+          {current_stats}
+          
+          Existing baseline:
+          {baseline}
+          
+          Suggest baseline updates:
+          - Whitelist Processes: [list]
+          - Expected Behaviors: [list]
+          - Threshold Adjustments: [suggestions]
+      
+      report_generation:
+        system: |
+          You are generating a security report for the operations team.
+          
+          Summarize the findings in a clear, actionable format.
+          Include:
+          1. Executive summary
+          2. Key findings
+          3. Risk assessment
+          4. Recommended actions
+          5. Timeline of events
+        
+        user_template: |
+          Generate a security report based on these findings:
+          
+          Anomalies Detected:
+          {anomalies}
+          
+          Investigation Results:
+          {investigation_results}
+          
+          LLM Analysis:
+          {llm_analysis}
+          
+          Create a comprehensive report.
+
